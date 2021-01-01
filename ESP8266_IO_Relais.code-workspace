@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "ESP8266_HomeBridge_IO_Relais",
+			"path": "ESP8266_HomeBridge_IO_Relais"
+		}
+	],
+	"settings": {}
+}
