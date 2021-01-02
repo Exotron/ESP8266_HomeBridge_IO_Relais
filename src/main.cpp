@@ -2,6 +2,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include "WifiSettings.h"
+#include "Lufter.h"
 
 #define led_built_in_ESP 2
 #define led_built_in_Node 16
@@ -16,12 +17,9 @@
 #define on 1
 #define off 0
 
-WiFiServer server(80);
+Lufter luft;
 
-//***********************************************************//
-//                                                           //
-//                                                           //
-//***********************************************************//
+WiFiServer server(80);
 void setRelaisAsOutput()
 {
   pinMode(RELAIS_MAIN, OUTPUT);
@@ -32,14 +30,38 @@ void setRelaisAsOutput()
   pinMode(RELAIS_230, OUTPUT);
 }
 
-String Weboutput()
+String Weboutput(int status)
 {
   String output;
   output += "http/1.x 200 OK\n";
   output += "Content-Type: text/html; charset=UTF-8\n\n";
   output += "<!DOCTYPE HTML>";
   output += "<html>";
-  output += "<h1>Luftkiste</h1>";
+  switch (status)
+  {
+  case 0:
+    output += "<h1>Luftkiste: AUS</h1>";
+    break;
+  case 80:
+    output += "<h1>Luftkiste: 80V</h1>";
+    break;
+  case 105:
+    output += "<h1>Luftkiste: 105V</h1>";
+    break;
+  case 130:
+    output += "<h1>Luftkiste: 130V</h1>";
+    break;
+  case 160:
+    output += "<h1>Luftkiste: 160V</h1>";
+    break;
+  case 230:
+    output += "<h1>Luftkiste: 230V</h1>";
+    break;
+  default:
+    output += "<h1>Luftkiste: Falscher Wert</h1>";
+    break;
+  }
+
   output += "<form action=\"\" method=\"GET\">";
   output += "<button name=\"mode\" value=\"0\">AUS</button>";
   output += "<br><br>";
@@ -59,26 +81,22 @@ String Weboutput()
 
 void allRelaisOff()
 {
-  digitalWrite(RELAIS_MAIN,off);
-  digitalWrite(RELAIS_230,off);
-  digitalWrite(RELAIS_80,off);
-  digitalWrite(RELAIS_105,off);
-  digitalWrite(RELAIS_130,off);
-  digitalWrite(RELAIS_160,off);
+  digitalWrite(RELAIS_MAIN, off);
+  digitalWrite(RELAIS_230, off);
+  digitalWrite(RELAIS_80, off);
+  digitalWrite(RELAIS_105, off);
+  digitalWrite(RELAIS_130, off);
+  digitalWrite(RELAIS_160, off);
   delay(100);
 }
 
-void setup() 
+void setup()
 {
-  setRelaisAsOutput();     //Setze den pinMode für die vorgesehenen Relais
-  WiFi.begin(WIFI_SSID,WIFI_PASSWD);
+  setRelaisAsOutput(); //Setze den pinMode für die vorgesehenen Relais
+  WiFi.begin(WIFI_SSID, WIFI_PASSWD);
   WiFi.setAutoReconnect(true);
   delay(1000);
-    server.begin();
-
-
-  pinMode(led_built_in_ESP, OUTPUT);
-  pinMode(led_built_in_Node,OUTPUT);
+  server.begin();
 }
 
 void loop()
@@ -86,65 +104,78 @@ void loop()
   WiFiClient client = server.available();
   int tryConnect = 1;
 
- while(WiFi.isConnected() == false)
- {
-   delay(500);
-   if(tryConnect >= 60)
-   {
-     allRelaisOff();
-     return;
-   }
-   tryConnect++;
- }
-  if(!client){
+  while (WiFi.isConnected() == false)
+  {
+    delay(500);
+    if (tryConnect >= 60)
+    {
+      allRelaisOff();
+      luft.setState(0);
+      return;
+    }
+    tryConnect++;
+  }
+  if (!client)
+  {
     return;
   }
   String request = client.readStringUntil('\r');
   client.flush();
-   
-  if(request==""){
+
+  if (request == "")
+  {
     client.stop();
     return;
   }
-   
-  //GPIOS schalten
-  if(request.indexOf("mode=0")>=0){
-    digitalWrite(led_built_in_Node, on);
-    allRelaisOff();
-  }
-  else if(request.indexOf("mode=80")>=0){
-    allRelaisOff();
-    digitalWrite(RELAIS_80,on);
-    digitalWrite(RELAIS_MAIN,on);
-    digitalWrite(led_built_in_Node, off);
-    
-  }
-  else if(request.indexOf("mode=105")>=0){
-    allRelaisOff();
-    digitalWrite(RELAIS_105,on);
-    digitalWrite(RELAIS_MAIN,on);
-    digitalWrite(led_built_in_Node, off);
-  }
-  else if(request.indexOf("mode=130")>=0){
-    allRelaisOff();
-    digitalWrite(RELAIS_130,on);
-    digitalWrite(RELAIS_MAIN,on);
-    digitalWrite(led_built_in_Node, off);
-  }
-  else if(request.indexOf("mode=160")>=0){
-    allRelaisOff();
-    digitalWrite(RELAIS_160,on);
-    digitalWrite(RELAIS_MAIN,on);
-    digitalWrite(led_built_in_Node, off);
-  }
-  else if(request.indexOf("mode=230")>=0){
-    allRelaisOff();
-    digitalWrite(RELAIS_230,on);
-    digitalWrite(led_built_in_Node, off);
 
+  //GPIOS schalten
+  if (request.indexOf("mode=0") >= 0)
+  {
+    digitalWrite(led_built_in_Node, on);
+    luft.setState(0);
+    allRelaisOff();
+  }
+  else if (request.indexOf("mode=80") >= 0)
+  {
+    luft.setState(80);
+    allRelaisOff();
+    digitalWrite(RELAIS_80, on);
+    digitalWrite(RELAIS_MAIN, on);
+    digitalWrite(led_built_in_Node, off);
+  }
+  else if (request.indexOf("mode=105") >= 0)
+  {
+    luft.setState(105);
+    allRelaisOff();
+    digitalWrite(RELAIS_105, on);
+    digitalWrite(RELAIS_MAIN, on);
+    digitalWrite(led_built_in_Node, off);
+  }
+  else if (request.indexOf("mode=130") >= 0)
+  {
+    luft.setState(130);
+    allRelaisOff();
+    digitalWrite(RELAIS_130, on);
+    digitalWrite(RELAIS_MAIN, on);
+    digitalWrite(led_built_in_Node, off);
+  }
+  else if (request.indexOf("mode=160") >= 0)
+  {
+    luft.setState(160);
+    allRelaisOff();
+    digitalWrite(RELAIS_160, on);
+    digitalWrite(RELAIS_MAIN, on);
+    digitalWrite(led_built_in_Node, off);
+  }
+  else if (request.indexOf("mode=230") >= 0)
+  {
+    luft.setState(230);
+    allRelaisOff();
+    digitalWrite(RELAIS_230, on);
+    digitalWrite(led_built_in_Node, off);
   }
 
   //Ausgabe erzeugen
-  client.print(Weboutput());
+  client.print(Weboutput(luft.getState()));
   client.stop();
 }
